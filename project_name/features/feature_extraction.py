@@ -1,3 +1,5 @@
+from typing import Dict, Tuple
+
 import cv2
 import numpy as np
 import scipy.stats as stat
@@ -11,7 +13,7 @@ class FeatureExctration:
 
     #Spectral features
 
-    def split_channels(self, image : mv) -> tuple(mv):
+    def split_channels(self, image : np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Takes an image and splits it into its three component channels
         Args: 
@@ -21,7 +23,7 @@ class FeatureExctration:
         """
         return cv2.split(image)
 
-    def mean_channel_value(self, image : mv) -> float:
+    def mean_channel_value(self, image : np.ndarray) -> float:
         """
         Returns the mean value of the pixel for a given channel
         Args:
@@ -29,9 +31,9 @@ class FeatureExctration:
         Return:
             the mean value of the pixels in the input color channel
         """
-        return np.mean(image)
+        return float(np.mean(image))
         
-    def channel_std_deviation(self, image : mv) -> float:
+    def channel_std_deviation(self, image : np.ndarray) -> float:
         """
         Returns the the standard deviation of the pixel valeus for a given channel
         Args:
@@ -39,9 +41,9 @@ class FeatureExctration:
         Return:
             the standard deviation of the values in the input color channel 
         """
-        return np.std(image)
+        return float(np.std(image))
 
-    def channel_skew(self, image : mv) -> float:
+    def channel_skew(self, image : np.ndarray) -> float:
         """
         Returns the skew of the pixel values for a given channel
         Args:
