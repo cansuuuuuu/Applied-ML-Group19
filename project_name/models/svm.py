@@ -10,7 +10,7 @@ from skimage import exposure
 
 IMG_SIZE = 64  # we set a small image size so baseline model can work well
 PROJECT = Path(__file__).resolve().parents[1]
-DATASET = PROJECT / "dataset"
+DATASET = PROJECT / "data" / "dataset"
 TRAIN_DIR = DATASET / "train"
 TEST_DIR = DATASET / "test"
 
