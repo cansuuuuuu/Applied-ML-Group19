@@ -1,12 +1,19 @@
 from pathlib import Path
+
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import (classification_report,
+                             confusion_matrix,
+                             jaccard_score,
+                             balanced_accuracy_score,
+                             f1_score)
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from skimage.feature import hog
 from skimage import exposure
+from project_name.features.feature_extraction import FeatureExtraction
 
 IMG_SIZE = 64  # we set a small image size so baseline model can work well
 PROJECT = Path(__file__).resolve().parents[1]
@@ -44,16 +51,13 @@ def load_images(root, classes=None):
     classes = classes or get_classes(root)
     for label, cls in enumerate(classes):
         class_dir = Path(root) / cls
-        if not class_dir.is_dir():
-            raise FileNotFoundError(f"Missing class directory: {class_dir}")
-
         images = image_files(class_dir)
         for img_path in images:
-            # convert to grayscale and resize
-            img = Image.open(img_path).convert("L").resize((
-                IMG_SIZE,
-                IMG_SIZE))
-            X.append(np.array(img))  # the image
+            # convert to BGR for feature extraction, and resize
+            img = (Image.open(img_path).convert("RGB").
+                   resize((IMG_SIZE, IMG_SIZE)))
+            arr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            X.append(arr)  # the image
             y.append(label)  # the label of the image
         print(f"{cls}: {len(images)} images")
     return np.array(X), np.array(y), classes
@@ -67,20 +71,35 @@ def flatten_pixels(X_train, X_test):
     :param X_test: test set.
     :return: the training and test set, flattened to pixels.
     """
-    X_train = X_train.reshape(len(X_train), -1).astype(np.float32) / 255.0
-    X_test = X_test.reshape(len(X_test), -1).astype(np.float32) / 255.0
+
+    # convert the images to grayscale
+    # for flattening pixels
+    def to_gray(arr):
+        if arr.ndim == 4:
+            return np.array([cv2.cvtColor(
+                im,
+                cv2.COLOR_BGR2GRAY) for im in arr])
+        return arr
+
+    X_train = to_gray(X_train).reshape(
+        len(X_train), -1).astype(np.float32) / 255.0
+    X_test = to_gray(X_test).reshape(
+        len(X_test), -1).astype(np.float32) / 255.0
+
     return X_train, X_test
 
 
 def hoggify(imgs):
     """
-    function for changing the images to Histogram of Oriented Gradients (HOG).
+    function for changing the images to
+    Histogram of Oriented Gradients (HOG).
     :param imgs: the images to be converted (training and test set).
     :return: the images converted to HOG.
     """
     hogged = np.array([
         hog(
-            img,
+            # convert to grayscale
+            cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img,
             orientations=9,
             pixels_per_cell=(8, 8),
             cells_per_block=(2, 2),
@@ -106,14 +125,27 @@ def load_dataset(train_dir=TRAIN_DIR, test_dir=TEST_DIR):
 
 def extract_features(X_train, X_test):
     """
-    extracting features from images.
+    extracting features from images. here the choice could
+    be made between HOG, flattening pixels, or the feature
+    extraction class we made based on the research paper
     :param X_train: the training set.
     :param X_test: the test set.
-    :return: the training and test set, hoggified.
+    :return: the training and test set.
     """
-    X_train_hog = hoggify(X_train)
-    X_test_hog = hoggify(X_test)
-    return X_train_hog, X_test_hog
+    """uncomment the following lines to use HOG"""
+    # X_train = hoggify(X_train)
+    # X_test = hoggify(X_test)
+
+    """uncomment the following line to flatten pixels"""
+    # X_train, X_test = flatten_pixels(X_train, X_test)
+
+    feature_extractor = FeatureExtraction()
+    X_train_feats = np.array(
+        [list(feature_extractor.run(img).values()) for img in X_train])
+    X_test_feats = np.array(
+        [list(feature_extractor.run(img).values()) for img in X_test])
+
+    return X_train_feats, X_test_feats
 
 
 def scale_features(X_train, X_test):
@@ -148,14 +180,23 @@ def evaluate_model(model, X_test, y_test, classes):
     :param X_test: the test set.
     :param y_test: the test labels.
     :param classes: the classes of the test set.
-    :return: the training and test set, scaled.
+    :return: the evaluation metrics of the model.
     """
     predictions = model.predict(X_test)
     print("SVM:\n", classification_report(
         y_test,
         predictions,
-        target_names=classes))
-    print("Confusion Matrix:\n", confusion_matrix(y_test, predictions))
+        target_names=classes
+    ))
+    print("Confusion Matrix:\n",
+          confusion_matrix(y_test, predictions))
+    # metrics 4 imbalance in the dataset
+    print("Jaccard Similarity: ",
+          jaccard_score(y_test, predictions, average='macro'), "\n")
+    print("Balanced Accuracy: ",
+          balanced_accuracy_score(y_test, predictions), "\n")
+    print("Macro F1 Score: ",
+          f1_score(y_test, predictions, average='macro'), "\n")
 
 
 def show_hog_example(image_path):
@@ -206,7 +247,7 @@ def run_pipeline():
     X_train, X_test, _ = scale_features(X_train, X_test)
     svm = train_svm(X_train, y_train)
     evaluate_model(svm, X_test, y_test, classes)
-    show_hog_example(TRAIN_DIR/"1_cumulus/1_cumulus_000009.jpg")
+    # show_hog_example(TRAIN_DIR/"1_cumulus/1_cumulus_000009.jpg")
 
 
 def main():
