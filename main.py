@@ -5,11 +5,16 @@ import tensorflow as tf
 from PIL import Image
 
 from project_name.models.cnn import CNNModel
-from project_name.models.svm import SVMModel
+from project_name.data.preprocessing import (
+    build_train_dataset,
+    build_val_dataset,
+    IMAGE_SIZE,
+)
+#from project_name.models.svm import SVMModel
 
 
 PROJECT = Path(__file__).resolve().parent / "project_name"
-DATASET = PROJECT / "dataset"
+DATASET = PROJECT / "data" / "dataset"
 TRAIN_DIR = DATASET / "train"
 TEST_DIR = DATASET / "test"
 
@@ -74,6 +79,24 @@ def load_dataset(
     return X_train, y_train, X_test, y_test, classes
 
 
+def gather_image_paths(root, classes=None):
+    """Return lists of file paths and labels (ints) for a directory structured by class subfolders."""
+    image_paths: list[str] = []
+    labels: list[int] = []
+    classes = classes or get_classes(root)
+    for label, cls in enumerate(classes):
+        class_dir = Path(root) / cls
+        if not class_dir.is_dir():
+            raise FileNotFoundError(f"Missing class directory: {class_dir}")
+
+        files = sorted(p for p in class_dir.iterdir() if p.is_file())
+        for p in files:
+            image_paths.append(str(p))
+            labels.append(label)
+        print(f"{cls}: {len(files)} images")
+    return image_paths, labels, classes
+
+
 def run_cnn(
     train_dir: Path = TRAIN_DIR,
     test_dir: Path = TEST_DIR,
@@ -81,36 +104,35 @@ def run_cnn(
     epochs: int = 10,
 ):
     """Train and evaluate the CNN on the project dataset."""
-    X_train, y_train, X_test, y_test, classes = load_dataset(
-        train_dir=train_dir,
-        test_dir=test_dir,
-    )
+    # gather file paths and labels, then build tf.data datasets with preprocessing
+    train_paths, train_labels, classes = gather_image_paths(train_dir)
+    val_paths, val_labels, _ = gather_image_paths(test_dir, classes)
 
-    X_train = np.stack((X_train,) * 3, axis=-1)
-    X_test = np.stack((X_test,) * 3, axis=-1)
+    batch_size = 32
+    train_ds = build_train_dataset(train_paths, train_labels, batch_size=batch_size, use_clahe=True)
+    val_ds = build_val_dataset(val_paths, val_labels, batch_size=batch_size)
 
     model = CNNModel(
-        input_shape=image_size + (3,),
+        input_shape=IMAGE_SIZE + (1,),
         num_classes=len(classes),
     )
 
     model.summary()
     history = model.fit(
-        X_train,
-        y_train,
-        validation_data=(X_test, y_test),
+        train_ds,
+        validation_data=val_ds,
         epochs=epochs,
         verbose=1,
     )
     model.plot_history()
-    test_loss, test_acc = model.evaluate(X_test, y_test, verbose=2)
+    test_loss, test_acc = model.evaluate(val_ds, verbose=2)
 
     print("Classes:", classes)
     print("Test loss:", test_loss)
     print("Test accuracy:", test_acc)
     return model, history, (test_loss, test_acc)
 
-
+'''
 def run_svm(
     train_dir: Path = TRAIN_DIR,
     test_dir: Path = TEST_DIR,
@@ -127,6 +149,7 @@ def run_svm(
     evaluate_model(svm, X_test, y_test, classes)
     show_hog_example(TRAIN_DIR / "1_cumulus/1_cumulus_000009.jpg")
     return svm
+'''
 
 
 if __name__ == '__main__':
