@@ -1,8 +1,5 @@
-# This is a sample Python script.
-
-def hello_world():
-    return "Hello, World!"
-
+from project_name.models.svm import run_pipeline
 
 if __name__ == '__main__':
-    hello_world()
+    run_pipeline()
+    

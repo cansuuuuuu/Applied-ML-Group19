@@ -1,4 +1,4 @@
-from pathlib import Path
+# from pathlib import Path
 
 import cv2
 import matplotlib.pyplot as plt
@@ -14,53 +14,56 @@ from sklearn.svm import SVC
 from skimage.feature import hog
 from skimage import exposure
 from project_name.features.feature_extraction import FeatureExtraction
-
-IMG_SIZE = 64  # we set a small image size so baseline model can work well
-PROJECT = Path(__file__).resolve().parents[1]
-DATASET = PROJECT / "data" / "dataset"
-TRAIN_DIR = DATASET / "train"
-TEST_DIR = DATASET / "test"
+from project_name.data.loading import load_dataset, split
+from project_name.data.preprocessing import resize, normalise, augmenting_classes
 
 
-def image_files(root):
-    """
-    function returns all images in the root directory.
-    :param root: the root path of images.
-    :return: sorted list of files that are images
-    """
-    return sorted(path for path in Path(root).iterdir() if path.is_file())
+# IMG_SIZE = 64  # we set a small image size so baseline model can work well
+# PROJECT = Path(__file__).resolve().parents[1]
+# DATASET = PROJECT / "data" / "dataset"
+# TRAIN_DIR = DATASET / "train"
+# TEST_DIR = DATASET / "test"
 
 
-def get_classes(root):
-    """
-    function returns classes in the directory based on the filenames.
-    :param root: the root path of images.
-    :return: sorted list of classes based on the subfolders.
-    """
-    return sorted([d.name for d in Path(root).iterdir() if d.is_dir()])
+# def image_files(root):
+#     """
+#     function returns all images in the root directory.
+#     :param root: the root path of images.
+#     :return: sorted list of files that are images
+#     """
+#     return sorted(path for path in Path(root).iterdir() if path.is_file())
 
 
-def load_images(root, classes=None):
-    """
-    function for loading in images from the dataset.
-    :param root: the root path of images.
-    :param classes: class folder names.
-    :return: 3 arrays, one for images, one for labels, and of classes.
-    """
-    X, y = [], []
-    classes = classes or get_classes(root)
-    for label, cls in enumerate(classes):
-        class_dir = Path(root) / cls
-        images = image_files(class_dir)
-        for img_path in images:
-            # convert to BGR for feature extraction, and resize
-            img = (Image.open(img_path).convert("RGB").
-                   resize((IMG_SIZE, IMG_SIZE)))
-            arr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-            X.append(arr)  # the image
-            y.append(label)  # the label of the image
-        print(f"{cls}: {len(images)} images")
-    return np.array(X), np.array(y), classes
+# def get_classes(root):
+#     """
+#     function returns classes in the directory based on the filenames.
+#     :param root: the root path of images.
+#     :return: sorted list of classes based on the subfolders.
+#     """
+#     return sorted([d.name for d in Path(root).iterdir() if d.is_dir()])
+
+
+# def load_images(root, classes=None):
+#     """
+#     function for loading in images from the dataset.
+#     :param root: the root path of images.
+#     :param classes: class folder names.
+#     :return: 3 arrays, one for images, one for labels, and of classes.
+#     """
+#     X, y = [], []
+#     classes = classes or get_classes(root)
+#     for label, cls in enumerate(classes):
+#         class_dir = Path(root) / cls
+#         images = image_files(class_dir)
+#         for img_path in images:
+#             # convert to BGR for feature extraction, and resize
+#             img = (Image.open(img_path).convert("RGB").
+#                    resize((IMG_SIZE, IMG_SIZE)))
+#             arr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+#             X.append(arr)  # the image
+#             y.append(label)  # the label of the image
+#         print(f"{cls}: {len(images)} images")
+#     return np.array(X), np.array(y), classes
 
 
 def flatten_pixels(X_train, X_test):
@@ -110,20 +113,20 @@ def hoggify(imgs):
     return hogged
 
 
-def load_dataset(train_dir=TRAIN_DIR, test_dir=TEST_DIR):
-    """
-    function loading in dataset. since the dataset is already split
-    as train and test we can load images separately.
-    :param train_dir: directory of training set.
-    :param test_dir: directory of test set.
-    :return: the training set, test set, and classes.
-    """
-    X_train, y_train, classes = load_images(train_dir)
-    X_test, y_test, _ = load_images(test_dir, classes)
-    return X_train, y_train, X_test, y_test, classes
+# def load_dataset(train_dir=TRAIN_DIR, test_dir=TEST_DIR):
+#     """
+#     function loading in dataset. since the dataset is already split
+#     as train and test we can load images separately.
+#     :param train_dir: directory of training set.
+#     :param test_dir: directory of test set.
+#     :return: the training set, test set, and classes.
+#     """
+#     X_train, y_train, classes = load_images(train_dir)
+#     X_test, y_test, _ = load_images(test_dir, classes)
+#     return X_train, y_train, X_test, y_test, classes
 
 
-def extract_features(X_train, X_test):
+def extract_features(X_train, X_val, X_test):
     """
     extracting features from images. here the choice could
     be made between HOG, flattening pixels, or the feature
@@ -134,31 +137,36 @@ def extract_features(X_train, X_test):
     """
     """uncomment the following lines to use HOG"""
     # X_train = hoggify(X_train)
-    # X_test = hoggify(X_test)
+    # X_test = hoggify(X_test) 
+    # X_val = hoggify(X_val)
 
     """uncomment the following line to flatten pixels"""
-    # X_train, X_test = flatten_pixels(X_train, X_test)
+    # X_train, X_val, X_test = flatten_pixels(X_train, X_val, X_test)
 
     feature_extractor = FeatureExtraction()
     X_train_feats = np.array(
         [list(feature_extractor.run(img).values()) for img in X_train])
+    X_val_feats = np.array(
+        [list(feature_extractor.run(img).values()) for img in X_val])
     X_test_feats = np.array(
         [list(feature_extractor.run(img).values()) for img in X_test])
 
-    return X_train_feats, X_test_feats
+    return X_train_feats, X_val_feats, X_test_feats
 
 
-def scale_features(X_train, X_test):
+def scale_features(X_train,X_val, X_test):
     """
     scaling the features.
     :param X_train: the training set.
+    :param X_val: the validation set.
     :param X_test: the test set.
     :return: the training and test set, scaled.
     """
     scaler = StandardScaler().fit(X_train)
     X_train_scaled = scaler.transform(X_train)
+    X_val_scaled = scaler.transform(X_val)
     X_test_scaled = scaler.transform(X_test)
-    return X_train_scaled, X_test_scaled, scaler
+    return X_train_scaled, X_val_scaled, X_test_scaled, scaler
 
 
 def train_svm(X_train, y_train):
@@ -243,16 +251,28 @@ def run_pipeline():
     :return: nothing.
     """
     X_train, y_train, X_test, y_test, classes = load_dataset()
-    X_train, X_test = extract_features(X_train, X_test)
-    X_train, X_test, _ = scale_features(X_train, X_test)
+    X_train, X_val, y_train, y_val = split(X_train, y_train)
+    X_train = resize(X_train)
+    X_val = resize(X_val)
+    X_test = resize(X_test)
+    
+    X_train = normalise(X_train)
+    X_val = normalise(X_val)
+    X_test = normalise(X_test)
+    
+    # X_train, y_train = augmenting_classes(X_train, y_train)
+
+    X_train, X_val, X_test = extract_features(X_train, X_val, X_test)
+    X_train, X_val, X_test, _ = scale_features(X_train, X_val, X_test)
     svm = train_svm(X_train, y_train)
+    evaluate_model(svm, X_val, y_val, classes)
     evaluate_model(svm, X_test, y_test, classes)
     # show_hog_example(TRAIN_DIR/"1_cumulus/1_cumulus_000009.jpg")
 
 
-def main():
-    run_pipeline()
+# def main():
+#     run_pipeline()
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

@@ -1,5 +1,6 @@
 from typing import Dict, Tuple
 
+
 import cv2
 import numpy as np
 import scipy.stats as stat
@@ -54,7 +55,8 @@ class FeatureExtraction:
         Return:
             the skew of the pixel values in the input color channel
         """
-        return float(stat.skew(image, axis=None))
+        result = float(stat.skew(image, axis=None))
+        return result if not np.isnan(result) else 0.0
 
     def channel_mean_difference(self, mean1: float, mean2: float) -> float:
         """
@@ -77,6 +79,9 @@ class FeatureExtraction:
              extracted from the image
         """
 
+        if image.dtype != np.uint8:
+            image = (image * 255).astype(np.uint8)
+
         b_channel, g_channel, r_channel = self.split_channels(image)
 
         # Textural features - only involve blue channel
@@ -84,7 +89,7 @@ class FeatureExtraction:
                                  distances=[1],
                                  angles=[0, np.pi/4, np.pi/2, 3*np.pi/4])
         contrast = np.mean(feat.graycoprops(glcm, 'contrast'))
-        entropy = np.mean(feat.graycoprops(glcm, 'entropy'))
+        dissimilarity = np.mean(feat.graycoprops(glcm, 'dissimilarity'))
         energy = np.mean(feat.graycoprops(glcm, 'energy'))
         homogeneity = np.mean(feat.graycoprops(glcm, 'homogeneity'))
 
@@ -104,7 +109,7 @@ class FeatureExtraction:
         feats = {
             "B homogeneity": homogeneity,
             "B contrast": contrast,
-            "B entropy": entropy,
+            "B dissimilarity": dissimilarity,
             "B energy": energy,
             "B standard deviation": b_stdev,
             "B skewness": b_skewness,
