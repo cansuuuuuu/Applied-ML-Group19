@@ -187,13 +187,13 @@ def run_cnn(
     model.plot_confusion_matrix(
         train_eval_ds,
         class_names=classes,
-        save_path="train_confusion_matrix.png",
+        save_path="project_name\data\train_confusion_matrix.png",
     )
 
     model.plot_confusion_matrix(
         val_ds,
         class_names=classes,
-        save_path="val_confusion_matrix.png",
+        save_path="project_name\data\val_confusion_matrix.png",
     )
 
     print("Classes:", classes)

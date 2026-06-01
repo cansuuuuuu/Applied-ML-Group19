@@ -89,7 +89,7 @@ class CNNModel:
         self,
         dataset,
         class_names: Optional[Sequence[str]] = None,
-        save_path: str = "confusion_matrix.png",
+        save_path: str = "project_name\data\confusion_matrix.png",
     ) -> None:
         y_true = []
         y_pred = []
