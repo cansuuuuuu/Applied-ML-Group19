@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-IMAGE_SIZE = (512, 512)
+IMAGE_SIZE = (128, 128)
 GRAYSCALE_CHANNELS = 1
 
 _rotator: tf.keras.layers.Layer = tf.keras.layers.RandomRotation(
@@ -88,13 +88,14 @@ def build_train_dataset(
     augmentation, shuffling and batching.
     """
     ds = tf.data.Dataset.from_tensor_slices((image_paths, labels))
+    ds = ds.shuffle(buffer_size=len(image_paths), reshuffle_each_iteration=True)
     ds = ds.map(load_and_preprocess_image, num_parallel_calls=tf.data.AUTOTUNE)
     if use_clahe:
         ds = ds.map(
             lambda img, lbl: (apply_clahe(img), lbl),
             num_parallel_calls=tf.data.AUTOTUNE,
         )
-    ds = ds.map(augment, num_parallel_calls=tf.data.AUTOTUNE)
+    #ds = ds.map(augment, num_parallel_calls=tf.data.AUTOTUNE)
     ds = ds.shuffle(buffer_size=1000).batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return ds
 
