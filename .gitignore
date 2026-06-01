@@ -6,3 +6,4 @@ venv/
 .env
 project_name/data/dataset
 *.pkl
+project_name/dataset
