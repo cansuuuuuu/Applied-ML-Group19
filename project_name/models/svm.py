@@ -1,6 +1,7 @@
 # from pathlib import Path
 
 import cv2
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
@@ -263,8 +264,10 @@ def run_pipeline():
     # X_train, y_train = augmenting_classes(X_train, y_train)
 
     X_train, X_val, X_test = extract_features(X_train, X_val, X_test)
-    X_train, X_val, X_test, _ = scale_features(X_train, X_val, X_test)
+    X_train, X_val, X_test, scaler = scale_features(X_train, X_val, X_test)
     svm = train_svm(X_train, y_train)
+    joblib.dump(svm, "project_name/models/svm_model.pkl")
+    joblib.dump(scaler, "project_name/models/scaler.pkl")
     evaluate_model(svm, X_val, y_val, classes)
     evaluate_model(svm, X_test, y_test, classes)
     # show_hog_example(TRAIN_DIR/"1_cumulus/1_cumulus_000009.jpg")
