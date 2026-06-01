@@ -5,6 +5,9 @@ name = "pypi"
 
 [packages]
 pre-commit = "*"
+matplotlib = "*"
+tensorflow = "*"
+opencv-python = "*"
 
 [dev-packages]
 
