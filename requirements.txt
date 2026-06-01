@@ -4,3 +4,8 @@ numpy
 scikit-image
 matplotlib
 tensorflow
+fastapi
+uvicorn
+python-multipart
+joblib
+pydantic
