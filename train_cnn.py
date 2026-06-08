@@ -77,6 +77,10 @@ def run_cnn():
         save_path="project_name/data/val_confusion_matrix.png",
     )
 
+    model.plot_history(
+        save_path="project_name/data/plot_history.png"
+    )
+
     model.model.save(MODEL_PATH)
 
     print("Classes:", classes)

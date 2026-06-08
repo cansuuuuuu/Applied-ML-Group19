@@ -121,7 +121,10 @@ class CNNModel:
         print(f"Saved confusion matrix to {save_path}")
         plt.show()
 
-    def plot_history(self) -> None:
+    def plot_history(
+        self,
+        save_path: str = "project_name\data\plot_history.png"
+    ) -> None:
         if self.history is None:
             raise ValueError("Train the model before calling plot_history().")
 
@@ -146,6 +149,8 @@ class CNNModel:
         axes[1].legend()
 
         plt.tight_layout()
+        plt.savefig(save_path, dpi=200, bbox_inches="tight")
+        print(f"Saved history plot to {save_path}")
         plt.show()
 
     def train_and_evaluate(
