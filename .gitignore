@@ -7,3 +7,5 @@ venv/
 project_name/data/dataset
 *.pkl
 project_name/dataset
+project_name/data/plots
+modules_for_habrok

@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 from typing import Optional, Sequence, Tuple
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
+from sklearn.metrics import (
+    ConfusionMatrixDisplay, 
+    confusion_matrix
+)
 from tensorflow.keras import layers, models
 
+SAVE_PATH = Path("project_name/data/plots")
+EPOCHS = 30
 
 class CNNModel:
     """
@@ -60,7 +66,7 @@ class CNNModel:
         train_images,
         train_labels=None,
         validation_data=None,
-        epochs: int = 30,
+        epochs: int = EPOCHS,
         batch_size: int = 8,
         verbose: int = 1,
         class_weight=None,
@@ -82,15 +88,12 @@ class CNNModel:
     def evaluate(self, test_images, test_labels = None, verbose: int = 2):
         return self.model.evaluate(test_images, test_labels, verbose=verbose)
 
+
     def predict(self, images):
         return self.model.predict(images)
     
-    def plot_confusion_matrix(
-        self,
-        dataset,
-        class_names: Optional[Sequence[str]] = None,
-        save_path: str = "project_name\data\confusion_matrix.png",
-    ) -> None:
+
+    def _collect_predictions(self, dataset):
         y_true = []
         y_pred = []
 
@@ -98,6 +101,17 @@ class CNNModel:
             logits = self.model.predict(images, verbose=0)
             y_pred.extend(np.argmax(logits, axis=1))
             y_true.extend(labels.numpy().astype(int).ravel())
+
+        return np.asarray(y_true), np.asarray(y_pred)
+
+
+    def plot_confusion_matrix(
+        self,
+        dataset,
+        class_names: Optional[Sequence[str]] = None,
+        save_path: str = SAVE_PATH / "confusion_matrix.png",
+    ) -> None:
+        y_true, y_pred = self._collect_predictions(dataset)
 
         labels = list(range(self.num_classes))
         matrix = confusion_matrix(y_true, y_pred, labels=labels, normalize="true")
@@ -117,13 +131,15 @@ class CNNModel:
         )
         ax.set_title("Normalized Confusion Matrix")
         plt.tight_layout()
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path, dpi=200, bbox_inches="tight")
         print(f"Saved confusion matrix to {save_path}")
-        plt.show()
+        plt.close(fig)
+
 
     def plot_history(
         self,
-        save_path: str = "project_name\data\plot_history.png"
+        save_path: str = SAVE_PATH / "plot_history.png"
     ) -> None:
         if self.history is None:
             raise ValueError("Train the model before calling plot_history().")
@@ -152,6 +168,7 @@ class CNNModel:
         plt.savefig(save_path, dpi=200, bbox_inches="tight")
         print(f"Saved history plot to {save_path}")
         plt.show()
+    
 
     def train_and_evaluate(
         self,
@@ -159,7 +176,7 @@ class CNNModel:
         train_labels,
         test_images,
         test_labels,
-        epochs: int = 30,
+        epochs: int = EPOCHS,
         batch_size: int = 32,
         verbose: int = 1,
     ):

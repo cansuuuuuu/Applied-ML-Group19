@@ -1,4 +1,10 @@
+import argparse
+
 import tensorflow as tf
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 from project_name.data.loading import load_dataset, split
 from project_name.data.preprocessing import (
@@ -13,6 +19,8 @@ from project_name.models.cnn import CNNModel
 
 MODEL_PATH = "project_name/models/cnn_model.keras"
 BATCH_SIZE = 32
+SAVE_PATH = Path("project_name/data/plots")
+LEARNING_RATE = 1e-4
 
 
 def prepare_for_cnn(images):
@@ -39,6 +47,7 @@ def run_cnn():
     X_train, y_train, X_test, y_test, classes = load_dataset()
     X_train, X_val, y_train, y_val = split(X_train, y_train)
 
+    
     X_train = prepare_for_cnn(X_train)
     X_val = prepare_for_cnn(X_val)
     X_test = prepare_for_cnn(X_test)
@@ -47,10 +56,11 @@ def run_cnn():
     val_ds = make_dataset(X_val, y_val)
     test_ds = make_dataset(X_test, y_test)
 
+    tf.keras.utils.set_random_seed(42)
     model = CNNModel(
         input_shape=IMAGE_SIZE + (1,),
         num_classes=len(classes),
-        learning_rate=1e-4,
+        learning_rate=LEARNING_RATE,
     )
 
     early_stopping = tf.keras.callbacks.EarlyStopping(
@@ -74,11 +84,11 @@ def run_cnn():
     model.plot_confusion_matrix(
         val_ds,
         class_names=classes,
-        save_path="project_name/data/val_confusion_matrix.png",
+        save_path=SAVE_PATH / "val_confusion_matrix.png",
     )
 
     model.plot_history(
-        save_path="project_name/data/plot_history.png"
+        save_path=SAVE_PATH / "plot_history.png"
     )
 
     model.model.save(MODEL_PATH)
