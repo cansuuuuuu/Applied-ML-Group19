@@ -8,8 +8,13 @@ import numpy as np
 import tensorflow as tf
 from sklearn.metrics import (
     ConfusionMatrixDisplay, 
-    confusion_matrix
+    confusion_matrix,
+    accuracy_score,
+    balanced_accuracy_score,
+    f1_score,
+    jaccard_score,
 )
+
 from tensorflow.keras import layers, models
 
 SAVE_PATH = Path("project_name/data/plots")
@@ -169,6 +174,17 @@ class CNNModel:
         print(f"Saved history plot to {save_path}")
         plt.show()
     
+
+    def calculate_metrics(self, dataset):
+        y_true, y_pred = self._collect_predictions(dataset)
+
+        return {
+            "accuracy": accuracy_score(y_true, y_pred),
+            "balanced_accuracy": balanced_accuracy_score(y_true, y_pred),
+            "macro_f1": f1_score(y_true, y_pred, average="macro"),
+            "macro_jaccard": jaccard_score(y_true, y_pred, average="macro"),
+        }
+
 
     def train_and_evaluate(
         self,

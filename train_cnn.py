@@ -81,6 +81,18 @@ def run_cnn():
     val_loss, val_acc = model.evaluate(val_ds, verbose=2)
     test_loss, test_acc = model.evaluate(test_ds, verbose=2)
 
+
+    val_metrics = model.calculate_metrics(val_ds)
+    test_metrics = model.calculate_metrics(test_ds)
+
+    print("\nCNN validation metrics:")
+    for name, value in val_metrics.items():
+        print(f"{name}: {value:.4f}")
+
+    print("\nCNN test metrics:")
+    for name, value in test_metrics.items():
+        print(f"{name}: {value:.4f}")
+
     model.plot_confusion_matrix(
         val_ds,
         class_names=classes,
