@@ -3,9 +3,10 @@ scikit-learn
 numpy
 scikit-image
 matplotlib
-tensorflow
-fastapi
+tensorflow[and-cuda]
+fastapi[standard]
 uvicorn
 python-multipart
 joblib
 pydantic
+typing

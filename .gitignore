@@ -1,9 +1,3 @@
-Pipfile.lock
-.idea
-__pycache__/
-.DS_Store
-venv/
-.env
+# Created by venv; see https://docs.python.org/3/library/venv.html
+*
 project_name/data/dataset
-*.pkl
-project_name/dataset
