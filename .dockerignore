@@ -1,0 +1,11 @@
+# Dataset
+project_name/data/dataset/
+*.ipynb
+__pycache__/
+*.pyc
+*.pyo
+.conda/
+.vscode/
+.git/
+.gitignore
+tests/
