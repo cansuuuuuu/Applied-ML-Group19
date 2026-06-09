@@ -19,7 +19,7 @@ class Prediction(BaseModel):
 svm = joblib.load("project_name/models/svm_model.pkl")
 scaler = joblib.load("project_name/models/scaler.pkl")
 cnn_model = None
-CNN_MODEL_PATH = Path("project_name/models/cnn_model.keras")
+CNN_MODEL_PATH = Path("project_name/models/cnn_model.h5")
 
 CLASS_NAMES = [
     "cumulus", "altocumulus", "cirrus",
@@ -43,7 +43,7 @@ def get_cnn_model():
                 status_code=503,
                 detail=f"CNN model file not found at {CNN_MODEL_PATH}. Train and save the CNN model first.",
             )
-        cnn_model = tf.keras.models.load_model(CNN_MODEL_PATH)
+        cnn_model = tf.keras.models.load_model(str(CNN_MODEL_PATH), compile=False)
     return cnn_model
 
 
