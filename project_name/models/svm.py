@@ -5,16 +5,22 @@ import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
+from sklearn import feature_extraction
+from sklearn.feature_extraction import DictVectorizer
 from sklearn.metrics import (classification_report,
                              confusion_matrix,
                              jaccard_score,
                              balanced_accuracy_score,
                              f1_score)
+from sklearn.model_selection import StratifiedKFold, GridSearchCV
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
+from sklearn.decomposition import PCA
 from skimage.feature import hog
 from skimage import exposure
 from project_name.features.feature_extraction import FeatureExtraction
+from sklearn.feature_extraction._dict_vectorizer import DictVectorizer
 from project_name.data.loading import load_dataset, split
 from project_name.data.preprocessing import resize, normalise, augmenting_classes
 
@@ -127,35 +133,9 @@ def hoggify(imgs):
 #     return X_train, y_train, X_test, y_test, classes
 
 
-def extract_features(X_train, X_val, X_test):
-    """
-    extracting features from images. here the choice could
-    be made between HOG, flattening pixels, or the feature
-    extraction class we made based on the research paper
-    :param X_train: the training set.
-    :param X_test: the test set.
-    :return: the training and test set.
-    """
-    """uncomment the following lines to use HOG"""
-    # X_train = hoggify(X_train)
-    # X_test = hoggify(X_test) 
-    # X_val = hoggify(X_val)
-
-    """uncomment the following line to flatten pixels"""
-    # X_train, X_val, X_test = flatten_pixels(X_train, X_val, X_test)
-
-    feature_extractor = FeatureExtraction()
-    X_train_feats = np.array(
-        [list(feature_extractor.run(img).values()) for img in X_train])
-    X_val_feats = np.array(
-        [list(feature_extractor.run(img).values()) for img in X_val])
-    X_test_feats = np.array(
-        [list(feature_extractor.run(img).values()) for img in X_test])
-
-    return X_train_feats, X_val_feats, X_test_feats
 
 
-def scale_features(X_train,X_val, X_test):
+def scale_features(X_train, X_test):
     """
     scaling the features.
     :param X_train: the training set.
@@ -165,22 +145,44 @@ def scale_features(X_train,X_val, X_test):
     """
     scaler = StandardScaler().fit(X_train)
     X_train_scaled = scaler.transform(X_train)
-    X_val_scaled = scaler.transform(X_val)
     X_test_scaled = scaler.transform(X_test)
-    return X_train_scaled, X_val_scaled, X_test_scaled, scaler
+    return X_train_scaled, X_test_scaled, scaler
 
-
-def train_svm(X_train, y_train):
+def build_svm_pipeline() -> GridSearchCV:
     """
-    trains the SVM.
-    :param X_train: the training set.
-    :param X_test: the test set.
-    :return: the trained SVM model.
+    Build the pipeline for the SVM training grid search
+    :param None
+    :return: the grid search cv pipeline for the SVM
     """
-    svm = SVC(kernel="rbf", C=10, gamma="scale")
-    svm.fit(X_train, y_train)
-    return svm
 
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("pca", PCA()),
+        ("svm", SVC(kernel = "rbf"))
+    ])
+
+    parameter_grid = {
+        'pca_n_components' : [0.8, 0.85, 0.9, 0.95, 0.99, None],
+        'svm_C' : [0.1, 1, 10, 100],
+        'svm_gamma' : ["scale", 0.001, 0.01, 0.1],
+    }
+
+    cross_validation = StratifiedKFold(n_splits = 5, shuffle = True, random_state = 42)
+
+    grid_search = GridSearchCV( estimator = pipeline,
+                         param_grid = parameter_grid,
+                         scoring = {
+                        "balanced_accuracy": "balanced_accuracy",
+                        "macro_f1": "f1_macro"
+                        },
+                         refit="macro_f1",
+                         cv = cross_validation,
+                         n_jobs = -1,
+                         verbose = 1,
+                         return_train_score = True
+                         )
+
+    return grid_search
 
 def evaluate_model(model, X_test, y_test, classes):
     """
@@ -252,30 +254,42 @@ def run_pipeline():
     :return: nothing.
     """
     X_train, y_train, X_test, y_test, classes = load_dataset()
-    X_train, X_val, y_train, y_val = split(X_train, y_train)
+
+
     X_train = resize(X_train)
-    X_val = resize(X_val)
     X_test = resize(X_test)
     
     X_train = normalise(X_train)
-    X_val = normalise(X_val)
     X_test = normalise(X_test)
-    
-    # X_train, y_train = augmenting_classes(X_train, y_train)
 
-    X_train, X_val, X_test = extract_features(X_train, X_val, X_test)
-    X_train, X_val, X_test, scaler = scale_features(X_train, X_val, X_test)
-    svm = train_svm(X_train, y_train)
-    joblib.dump(svm, "project_name/models/svm_model.pkl")
-    joblib.dump(scaler, "project_name/models/scaler.pkl")
-    evaluate_model(svm, X_val, y_val, classes)
-    evaluate_model(svm, X_test, y_test, classes)
+    feature_extractor = FeatureExtraction()
+
+    train_dicts = [feature_extractor.run(img) for img in X_train]
+    test_dicts = [feature_extractor.run(img) for img in X_test]
+
+    vectorizer = DictVectorizer(sparse = False)
+
+    X_train_feats = vectorizer.fit_transform(train_dicts)
+    X_test_feats = vectorizer.transform(test_dicts)
+
+    grid = build_svm_pipeline()
+    grid.fit(X_train_feats, y_train)
+
+    best_model = grid.best_estimator_
+
+    joblib.dump(best_model, "project_name/models/svm_model.pkl")
+    vectorizer = vectorizer.get_feature_names_out()
+    joblib.dump(vectorizer, "project_name/models/vectorizer.pkl")
+
+
+
+    evaluate_model(best_model, X_test_feats, y_test, classes)
     # show_hog_example(TRAIN_DIR/"1_cumulus/1_cumulus_000009.jpg")
 
 
-# def main():
-#     run_pipeline()
+def main():
+     run_pipeline()
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+     main()
