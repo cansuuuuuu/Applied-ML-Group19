@@ -3,7 +3,7 @@ scikit-learn
 numpy
 scikit-image
 matplotlib
-tensorflow
+tensorflow==2.16.2
 fastapi
 uvicorn
 python-multipart

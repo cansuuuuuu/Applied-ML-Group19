@@ -9,3 +9,4 @@ project_name/data/dataset
 project_name/dataset
 project_name/data/plots
 modules_for_habrok
+cnn_model.keras
